@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stack Tower — Froogoo Games</title>
+<meta name="description" content="Stack blocks as high as you can. Tap to drop, don't miss! A timing game by Froogoo.">
+<meta property="og:title" content="Stack Tower 🏗️">
+<meta property="og:description" content="Stack blocks as high as you can. Tap to drop, don't miss!">
+<meta property="og:url" content="https://froogooofficial.github.io/stack-tower/">
+<meta property="og:type" content="website">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#fff;height:100vh;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+
+canvas{display:block;width:100%;height:100%}
+
+/* Overlays */
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:10;background:rgba(5,5,5,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.panel{text-align:center;max-width:340px;padding:2rem 1.5rem;width:90%}
+
+.panel h1{font-size:2.2rem;font-weight:900;letter-spacing:-1px;margin-bottom:0.3rem}
+.panel h1 span{background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.panel h2{font-size:1.6rem;font-weight:800;margin-bottom:0.5rem}
+.panel .tagline{color:#666;font-size:0.85rem;margin-bottom:1.5rem}
+.panel .score-big{font-size:4rem;font-weight:900;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin:0.5rem 0}
+.panel .score-label{color:#666;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.panel .best-score{color:#555;font-size:0.8rem;margin-top:0.3rem}
+.panel .perfect-count{color:#f59e0b;font-size:0.85rem;margin-top:0.3rem;font-weight:600}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.8rem 1.8rem;border:none;border-radius:12px;font-family:inherit;font-size:0.9rem;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;margin:0.3rem}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;box-shadow:0 4px 20px rgba(245,158,11,0.3)}
+.btn-secondary{background:#1a1a1a;color:#888;border:1px solid #2a2a2a}
+.btn-share{background:#1a1a1a;color:#4ade80;border:1px solid #2a2a2a}
+
+/* How to play */
+.how-to{text-align:left;margin:1.2rem 0}
+.how-to .step{display:flex;align-items:flex-start;gap:0.7rem;margin-bottom:0.8rem}
+.how-to .step-icon{font-size:1.3rem;line-height:1.3}
+.how-to .step-text{font-size:0.8rem;color:#999;line-height:1.5}
+.how-to .step-text strong{color:#ccc}
+
+/* Help button */
+.help-btn{position:fixed;top:1rem;right:1rem;z-index:5;width:36px;height:36px;border-radius:50%;background:#1a1a1a;border:1px solid #2a2a2a;color:#555;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .2s,border-color .2s}
+.help-btn:hover{color:#fff;border-color:#444}
+
+/* HUD */
+.hud{position:fixed;top:1rem;left:1rem;z-index:5;display:flex;gap:1rem;align-items:center}
+.hud-item{font-size:0.8rem;font-weight:700;color:#555}
+.hud-item span{color:#fff;font-size:1rem}
+
+/* Combo */
+.combo-display{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;opacity:0;transition:opacity .2s}
+.combo-text{font-size:2rem;font-weight:900;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,0.5)}
+
+/* Back link */
+.back-link{position:fixed;top:1rem;left:1rem;z-index:15;color:#444;text-decoration:none;font-size:0.8rem;font-weight:600;transition:color .2s}
+.back-link:hover{color:#888}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div class="hud" id="hud" style="display:none">
+  <div class="hud-item">🏗️ <span id="hud-score">0</span></div>
+</div>
+
+<button class="help-btn" id="helpBtn" style="display:none">?</button>
+
+<div class="combo-display" id="combo">
+  <div class="combo-text" id="comboText"></div>
+</div>
+
+<!-- Instructions overlay -->
+<div class="overlay" id="startOverlay">
+  <div class="panel">
+    <a href="https://froogooofficial.github.io/games/" class="back-link">← Games</a>
+    <h1><span>Stack Tower</span></h1>
+    <p class="tagline">Stack blocks as high as you can</p>
+    <div class="how-to">
+      <div class="step">
+        <div class="step-icon">👆</div>
+        <div class="step-text"><strong>Tap or click</strong> anywhere to drop the sliding block</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">✂️</div>
+        <div class="step-text"><strong>Overhanging parts</strong> get cut off — align precisely!</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">✨</div>
+        <div class="step-text"><strong>Perfect drops</strong> (no overhang) keep full width & give bonus points</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">💀</div>
+        <div class="step-text"><strong>Game over</strong> when a block misses entirely</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="startBtn">Tap to Play</button>
+  </div>
+</div>
+
+<!-- Game Over overlay -->
+<div class="overlay hidden" id="gameOverOverlay">
+  <div class="panel">
+    <h2>Game Over</h2>
+    <div class="score-label">BLOCKS STACKED</div>
+    <div class="score-big" id="finalScore">0</div>
+    <div class="perfect-count" id="perfectCount"></div>
+    <div class="best-score" id="bestScore"></div>
+    <div style="margin-top:1.2rem">
+      <button class="btn btn-primary" id="retryBtn">Play Again</button>
+      <button class="btn btn-share" id="shareBtn">📋 Share</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help overlay -->
+<div class="overlay hidden" id="helpOverlay">
+  <div class="panel">
+    <h2>How to Play</h2>
+    <div class="how-to">
+      <div class="step">
+        <div class="step-icon">👆</div>
+        <div class="step-text"><strong>Tap or click</strong> anywhere to drop the sliding block</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">✂️</div>
+        <div class="step-text"><strong>Overhanging parts</strong> get cut off — align precisely!</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">✨</div>
+        <div class="step-text"><strong>Perfect drops</strong> (no overhang) keep full width & give bonus points</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">💀</div>
+        <div class="step-text"><strong>Game over</strong> when a block misses entirely</div>
+      </div>
+    </div>
+    <button class="btn btn-secondary" id="helpClose">Got it</button>
+  </div>
+</div>
+
+<script>
+// ========== GAME ENGINE ==========
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// State
+let blocks = [];
+let currentBlock = null;
+let gameRunning = false;
+let score = 0;
+let perfectStreak = 0;
+let totalPerfects = 0;
+let best = parseInt(localStorage.getItem('stack-tower-best') || '0');
+let cameraY = 0;
+let targetCameraY = 0;
+let fallingPieces = [];
+let particles = [];
+let shakeAmount = 0;
+let gameSpeed = 2;
+
+// Dimensions
+const BLOCK_HEIGHT = 30;
+const PERFECT_THRESHOLD = 3; // pixels tolerance for "perfect"
+
+// Colors - warm gradient as you go higher
+function getBlockColor(index) {
+  const hues = [20, 30, 40, 350, 0, 10, 280, 260, 200, 180];
+  const hue = hues[index % hues.length];
+  const sat = 70 + (index % 3) * 10;
+  const lit = 45 + (index % 4) * 5;
+  return `hsl(${hue}, ${sat}%, ${lit}%)`;
+}
+
+function getBlockColorDark(index) {
+  const hues = [20, 30, 40, 350, 0, 10, 280, 260, 200, 180];
+  const hue = hues[index % hues.length];
+  const sat = 60 + (index % 3) * 10;
+  const lit = 30 + (index % 4) * 3;
+  return `hsl(${hue}, ${sat}%, ${lit}%)`;
+}
+
+function resize() {
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+function initGame() {
+  const baseWidth = Math.min(W() * 0.6, 200);
+  const baseX = (W() - baseWidth) / 2;
+  
+  blocks = [{
+    x: baseX,
+    width: baseWidth,
+    y: 0, // ground level (we'll compute screen position)
+    color: getBlockColor(0),
+    colorDark: getBlockColorDark(0)
+  }];
+  
+  currentBlock = null;
+  fallingPieces = [];
+  particles = [];
+  score = 0;
+  perfectStreak = 0;
+  totalPerfects = 0;
+  gameSpeed = 2;
+  cameraY = 0;
+  targetCameraY = 0;
+  shakeAmount = 0;
+  
+  spawnBlock();
+}
+
+function spawnBlock() {
+  const last = blocks[blocks.length - 1];
+  const level = blocks.length;
+  const dir = level % 2 === 1 ? 1 : -1;
+  const startX = dir === 1 ? -last.width : W();
+  
+  // Speed increases gradually
+  gameSpeed = 2 + level * 0.15;
+  if (gameSpeed > 8) gameSpeed = 8;
+  
+  currentBlock = {
+    x: startX,
+    width: last.width,
+    y: level, // level index
+    dir: dir,
+    speed: gameSpeed,
+    color: getBlockColor(level),
+    colorDark: getBlockColorDark(level)
+  };
+}
+
+function dropBlock() {
+  if (!currentBlock || !gameRunning) return;
+  
+  const last = blocks[blocks.length - 1];
+  const cur = currentBlock;
+  
+  // Calculate overlap
+  const overlapLeft = Math.max(cur.x, last.x);
+  const overlapRight = Math.min(cur.x + cur.width, last.x + last.width);
+  const overlapWidth = overlapRight - overlapLeft;
+  
+  if (overlapWidth <= 0) {
+    // Missed entirely — drop the whole thing
+    fallingPieces.push({
+      x: cur.x,
+      width: cur.width,
+      screenY: getScreenY(cur.y),
+      vy: 0,
+      color: cur.color,
+      colorDark: cur.colorDark
+    });
+    shakeAmount = 8;
+    gameOver();
+    return;
+  }
+  
+  const isPerfect = Math.abs(overlapWidth - last.width) < PERFECT_THRESHOLD;
+  
+  if (isPerfect) {
+    // Perfect — keep full width
+    perfectStreak++;
+    totalPerfects++;
+    blocks.push({
+      x: last.x,
+      width: last.width,
+      y: cur.y,
+      color: cur.color,
+      colorDark: cur.colorDark
+    });
+    
+    // Particles burst
+    spawnParticles(last.x + last.width / 2, getScreenY(cur.y), '#f59e0b', 20);
+    
+    // Show combo
+    showCombo(perfectStreak);
+  } else {
+    perfectStreak = 0;
+    
+    // Place the overlapping part
+    blocks.push({
+      x: overlapLeft,
+      width: overlapWidth,
+      y: cur.y,
+      color: cur.color,
+      colorDark: cur.colorDark
+    });
+    
+    // Create falling piece for the overhang
+    if (cur.x < last.x) {
+      // Overhang on left
+      fallingPieces.push({
+        x: cur.x,
+        width: last.x - cur.x,
+        screenY: getScreenY(cur.y),
+        vy: 0,
+        color: cur.color,
+        colorDark: cur.colorDark
+      });
+    }
+    if (cur.x + cur.width > last.x + last.width) {
+      // Overhang on right
+      fallingPieces.push({
+        x: last.x + last.width,
+        width: (cur.x + cur.width) - (last.x + last.width),
+        screenY: getScreenY(cur.y),
+        vy: 0,
+        color: cur.color,
+        colorDark: cur.colorDark
+      });
+    }
+  }
+  
+  score = blocks.length - 1;
+  document.getElementById('hud-score').textContent = score;
+  
+  // Move camera up
+  targetCameraY = Math.max(0, (blocks.length - 6) * BLOCK_HEIGHT);
+  
+  currentBlock = null;
+  spawnBlock();
+}
+
+function getScreenY(level) {
+  // Ground is at bottom, blocks stack upward
+  const groundY = H() - 60;
+  return groundY - (level * BLOCK_HEIGHT) + cameraY;
+}
+
+function gameOver() {
+  gameRunning = false;
+  currentBlock = null;
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('stack-tower-best', best.toString());
+  }
+  
+  setTimeout(() => {
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('bestScore').textContent = score >= best ? `🏆 New best!` : `Best: ${best}`;
+    document.getElementById('perfectCount').textContent = totalPerfects > 0 ? `✨ ${totalPerfects} perfect drop${totalPerfects !== 1 ? 's' : ''}` : '';
+    document.getElementById('gameOverOverlay').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('helpBtn').style.display = 'none';
+  }, 600);
+}
+
+// ========== PARTICLES ==========
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: x + (Math.random() - 0.5) * 40,
+      y: y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: -Math.random() * 5 - 2,
+      life: 1,
+      color: color,
+      size: Math.random() * 4 + 2
+    });
+  }
+}
+
+// ========== COMBO DISPLAY ==========
+function showCombo(streak) {
+  if (streak < 2) return;
+  const el = document.getElementById('combo');
+  const text = document.getElementById('comboText');
+  const messages = ['Nice!', 'Great!', 'Amazing!', 'Incredible!', 'GODLIKE!'];
+  text.textContent = streak >= 6 ? messages[4] : messages[Math.min(streak - 2, 3)] + ` x${streak}`;
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 800);
+}
+
+// ========== RENDER ==========
+function draw() {
+  const w = W();
+  const h = H();
+  
+  // Smooth camera
+  cameraY += (targetCameraY - cameraY) * 0.08;
+  
+  // Shake decay
+  shakeAmount *= 0.9;
+  if (shakeAmount < 0.1) shakeAmount = 0;
+  const shakeX = (Math.random() - 0.5) * shakeAmount;
+  const shakeY = (Math.random() - 0.5) * shakeAmount;
+  
+  // Clear
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, w, h);
+  
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+  
+  // Draw subtle grid lines
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1;
+  const gridOffset = cameraY % 60;
+  for (let y = -60 + gridOffset; y < h + 60; y += 60) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  
+  // Ground
+  const groundY = h - 60 + cameraY * 0;
+  // Actually ground moves with camera... let's compute getScreenY-based ground
+  const groundScreenY = getScreenY(0) + BLOCK_HEIGHT;
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, groundScreenY, w, h - groundScreenY + 100);
+  
+  // Draw placed blocks
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    const sy = getScreenY(b.y);
+    if (sy > h + BLOCK_HEIGHT || sy < -BLOCK_HEIGHT) continue;
+    
+    // Block body
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, sy, b.width, BLOCK_HEIGHT - 1);
+    
+    // Top highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(b.x, sy, b.width, 3);
+    
+    // Bottom shadow
+    ctx.fillStyle = b.colorDark;
+    ctx.fillRect(b.x, sy + BLOCK_HEIGHT - 4, b.width, 3);
+  }
+  
+  // Draw current sliding block
+  if (currentBlock) {
+    const b = currentBlock;
+    const sy = getScreenY(b.y);
+    
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, sy, b.width, BLOCK_HEIGHT - 1);
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(b.x, sy, b.width, 3);
+    
+    ctx.fillStyle = b.colorDark;
+    ctx.fillRect(b.x, sy + BLOCK_HEIGHT - 4, b.width, 3);
+    
+    // Guide line (subtle)
+    const last = blocks[blocks.length - 1];
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(last.x, sy);
+    ctx.lineTo(last.x, sy + BLOCK_HEIGHT);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(last.x + last.width, sy);
+    ctx.lineTo(last.x + last.width, sy + BLOCK_HEIGHT);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  
+  // Draw falling pieces
+  for (let i = fallingPieces.length - 1; i >= 0; i--) {
+    const p = fallingPieces[i];
+    p.vy += 0.5;
+    p.screenY += p.vy;
+    
+    if (p.screenY > h + 100) {
+      fallingPieces.splice(i, 1);
+      continue;
+    }
+    
+    ctx.globalAlpha = Math.max(0, 1 - p.vy / 20);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.screenY, p.width, BLOCK_HEIGHT - 1);
+    ctx.globalAlpha = 1;
+  }
+  
+  // Draw particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= 0.025;
+    
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  
+  ctx.restore();
+}
+
+// ========== UPDATE ==========
+function update() {
+  if (!gameRunning || !currentBlock) return;
+  
+  currentBlock.x += currentBlock.speed * currentBlock.dir;
+  
+  // Bounce off walls
+  if (currentBlock.x + currentBlock.width > W() + 20) {
+    currentBlock.dir = -1;
+  }
+  if (currentBlock.x < -20) {
+    currentBlock.dir = 1;
+  }
+}
+
+// ========== GAME LOOP ==========
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ========== SHARE ==========
+function shareScore() {
+  const height = score;
+  const maxBars = Math.min(height, 15);
+  const baseWidth = 9;
+  let lines = [];
+  
+  // Build a tower visual
+  for (let i = maxBars - 1; i >= 0; i--) {
+    const level = height - maxBars + i;
+    const width = baseWidth - Math.floor(i * 0.3);
+    const w = Math.max(3, Math.min(baseWidth, width));
+    const pad = Math.floor((baseWidth - w) / 2);
+    const colors = ['🟫', '🟧', '🟨', '🟥', '🟪'];
+    const block = colors[level % colors.length];
+    lines.push(' '.repeat(pad) + block.repeat(w));
+  }
+  lines.push('🟫'.repeat(baseWidth)); // ground
+  
+  let text = `🏗️ Stack Tower: ${score} blocks!\n`;
+  if (totalPerfects > 0) text += `✨ ${totalPerfects} perfect drops\n`;
+  text += '\n' + lines.join('\n');
+  text += `\n\nhttps://froogooofficial.github.io/stack-tower/`;
+  
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('shareBtn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Share', 2000);
+  }).catch(() => {});
+}
+
+// ========== EVENTS ==========
+function handleTap() {
+  if (gameRunning) {
+    dropBlock();
+  }
+}
+
+canvas.addEventListener('click', handleTap);
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  handleTap();
+}, { passive: false });
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (gameRunning) {
+      handleTap();
+    } else if (!document.getElementById('startOverlay').classList.contains('hidden')) {
+      startGame();
+    } else if (!document.getElementById('gameOverOverlay').classList.contains('hidden')) {
+      startGame();
+    }
+  }
+});
+
+function startGame() {
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  document.getElementById('helpOverlay').classList.add('hidden');
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('helpBtn').style.display = 'flex';
+  document.getElementById('hud-score').textContent = '0';
+  
+  initGame();
+  gameRunning = true;
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('shareBtn').addEventListener('click', shareScore);
+document.getElementById('helpBtn').addEventListener('click', () => {
+  document.getElementById('helpOverlay').classList.remove('hidden');
+  gameRunning = false;
+});
+document.getElementById('helpClose').addEventListener('click', () => {
+  document.getElementById('helpOverlay').classList.add('hidden');
+  gameRunning = true;
+});
+
+// Init the background scene
+initGame();
+</script>
+<script data-goatcounter="https://frogpond.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
