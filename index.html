@@ -164,6 +164,7 @@ let particles = [];
 let shakeAmount = 0;
 let gameSpeed = 2;
 let tapReady = false;
+let lastTapTime = 0;
 
 // Dimensions
 const BLOCK_HEIGHT = 30;
@@ -572,6 +573,9 @@ function shareScore() {
 
 // ========== EVENTS ==========
 function handleTap() {
+  const now = Date.now();
+  if (now - lastTapTime < 100) return; // debounce double events
+  lastTapTime = now;
   if (gameRunning && tapReady) {
     dropBlock();
   }
@@ -610,8 +614,8 @@ function startGame() {
   setTimeout(() => tapReady = true, 300);
 }
 
-document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('startBtn').addEventListener('click', (e) => { e.stopPropagation(); startGame(); });
+document.getElementById('retryBtn').addEventListener('click', (e) => { e.stopPropagation(); startGame(); });
 document.getElementById('shareBtn').addEventListener('click', shareScore);
 document.getElementById('helpBtn').addEventListener('click', () => {
   document.getElementById('helpOverlay').classList.remove('hidden');
