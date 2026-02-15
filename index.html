@@ -163,6 +163,7 @@ let fallingPieces = [];
 let particles = [];
 let shakeAmount = 0;
 let gameSpeed = 2;
+let tapReady = false;
 
 // Dimensions
 const BLOCK_HEIGHT = 30;
@@ -571,7 +572,7 @@ function shareScore() {
 
 // ========== EVENTS ==========
 function handleTap() {
-  if (gameRunning) {
+  if (gameRunning && tapReady) {
     dropBlock();
   }
 }
@@ -605,6 +606,8 @@ function startGame() {
   
   initGame();
   gameRunning = true;
+  tapReady = false;
+  setTimeout(() => tapReady = true, 300);
 }
 
 document.getElementById('startBtn').addEventListener('click', startGame);
