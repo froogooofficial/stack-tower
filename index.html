@@ -573,19 +573,21 @@ function shareScore() {
 
 // ========== EVENTS ==========
 function handleTap() {
-  const now = Date.now();
-  if (now - lastTapTime < 100) return; // debounce double events
-  lastTapTime = now;
   if (gameRunning && tapReady) {
     dropBlock();
   }
 }
 
-canvas.addEventListener('click', handleTap);
+let usedTouch = false;
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
+  usedTouch = true;
   handleTap();
 }, { passive: false });
+canvas.addEventListener('click', () => {
+  if (!usedTouch) handleTap();
+  usedTouch = false;
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'Enter') {
